@@ -7,4 +7,5 @@
 		 -strict-formats
 		 -short-paths
 		 -keep-locs))
- (libraries     core str stringext logs fmt minCaml corext))
+ (libraries     core str stringext logs fmt minCaml corext)
+ (preprocess (pps ppx_fields_conv ppx_deriving.show)))

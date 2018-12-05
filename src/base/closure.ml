@@ -106,6 +106,11 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2
   | KNormal.ExtArray(x) -> ExtArray(Id.L(x))
   | KNormal.ExtFunApp(x, ys) -> AppDir(Id.L("min_caml_" ^ x), ys)
 
+let f' e =
+  toplevel := [];
+  ignore(g M.empty S.empty e);
+  !toplevel
+
 let f e =
   toplevel := [];
   let e' = g M.empty S.empty e in

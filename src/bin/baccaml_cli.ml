@@ -2,6 +2,8 @@ open Core
 open MinCaml
 open BacCaml
 
+exception Error of string
+
 let level = ref `Dump
 
 let interp = ref ""
@@ -18,10 +20,39 @@ let jit_typ typ = match typ with
   | "mjit" -> `Meta_method
   | _ -> `Not_specified
 
-let tran_annot typ p =
+let trans_annot_fundef typ fundef =
   match typ with
-  | `Meta_tracing | `Meta_method as typ -> Jit_annot.gen_mj typ p
-  | `Not_specified -> failwith "jit type is not specified."
+  | `Meta_method | `Meta_tracing as typ ->
+    Jit_annot.gen_mj_fundef typ fundef
+  | `Not_specified ->
+    raise (Error "jit type is not specified")
+
+let trans_annot typ p =
+  match typ with
+  | `Meta_tracing | `Meta_method as typ ->
+    Jit_annot.gen_mj typ p
+  | `Not_specified ->
+    raise (Error "jit type is not specified")
+
+let compile_fundefs typ file =
+  let f = get_prefix file in
+  let ic = In_channel.create (f ^ ".ml") in
+  let oc = Out_channel.create (f ^ ".s") in
+  try
+    Lexing.from_channel ic
+    |> Util.virtualize_fundefs
+    |> List.map ~f:Trim.h
+    |> List.map ~f:Simm.h
+    |> List.map ~f:(trans_annot_fundef typ)
+    |> List.map ~f:RegAlloc.h
+    |> List.map ~f:(Emit.h oc)
+    |> ignore;
+    In_channel.close ic;
+    Out_channel.close oc;
+  with e ->
+    In_channel.close ic;
+    Out_channel.close oc;
+    raise e
 
 let dump typ file =
   In_channel.create file
@@ -29,7 +60,7 @@ let dump typ file =
   |> Util.virtualize
   |> Trim.f
   |> Simm.f
-  |> tran_annot typ
+  |> trans_annot typ
   |> Emit_virtual.to_string_prog
   |> Out_channel.print_endline
 
@@ -42,7 +73,7 @@ let compile typ f =
     |> Util.virtualize
     |> Trim.f
     |> Simm.f
-    |> tran_annot typ
+    |> trans_annot typ
     |> RegAlloc.f
     |> Emit.f oc;
     In_channel.close ic;
@@ -59,8 +90,18 @@ let validate_file file =
   | `Yes -> ()
   | `No | `Unknown -> raise (No_such_file file)
 
+let gen_fundefs_asm typ file =
+  compile_fundefs typ file
+
 let gen_interp_asm typ file =
   compile (jit_typ typ) file
+
+let build_object_file_fundef file =
+  let from = cwd ^ "/" ^ file ^ ".s" in
+  let to' = cwd ^ "/" ^ file ^ ".o" in
+  validate_file from;
+  Printf.sprintf "gcc -c -g m32 %s -o %s" from to'
+  |> Sys.command_exn
 
 let build_object_file file =
   let from = cwd ^ "/" ^ file ^ ".s" in

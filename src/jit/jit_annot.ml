@@ -29,13 +29,12 @@ let rec gen_mj_t is_mj t = match t with
   | Let (r, x, t) ->
     Let (r, x, gen_mj_t is_mj t)
 
+let gen_mj_fundef is_mj { name; args; fargs; body; ret } =
+  { name = name; args = args; fargs = fargs; ret = ret;
+    body = gen_mj_t is_mj body }
+
 let gen_mj is_mj (Prog (table, fundefs, main)) =
-  let { name; args; fargs; body; ret } = find_fundef "interp" fundefs in
-  let other_fundefs = List.filter (fun fundef -> fundef.name <> name ) fundefs in
-  let new_fundefs =
-    { name = name;
-      args = args;
-      fargs = fargs;
-      ret = ret;
-      body = gen_mj_t is_mj body; } :: other_fundefs in
+  let interp_fundef = find_fundef "min_caml_interp" fundefs in
+  let other_fundefs = List.filter (fun fundef -> fundef.name <> interp_fundef.name) fundefs in
+  let new_fundefs = (gen_mj_fundef is_mj interp_fundef) :: other_fundefs in
   Prog (table, new_fundefs, main)

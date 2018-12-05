@@ -3,8 +3,8 @@ open Asm
 open Inlining
 open Renaming
 open Operands
-open Jit_config
 open Jit_util
+open Jit_prep
 
 type tj_env =
   { index_pc: int; merge_pc: int; trace_name: string }
@@ -188,9 +188,9 @@ and tj_if (p : prog) (reg : value array) (mem : value array) (tj_env : tj_env) =
     end
 
 let run_while p reg mem name reds index_pc merge_pc =
-  let Prog (tbl, _, m) = p in
-  let Jit_prep.Env (fdfs, ibody, reds) =
-    Jit_prep.prep ~prog:p ~name:name ~red_args:reds ~jit_type:`Meta_tracing in
+  let Prog (tbl, fdfs, m) = p in
+  let Jit_env (fdfs, ibody, reds) =
+    Jit_prep.prep ~fundefs:fdfs ~name:name ~red_args:reds ~jit_type:`Meta_tracing in
   let p' = Prog (tbl, fdfs, m) in
   let trace = tj p' reg mem { index_pc = index_pc; merge_pc = merge_pc; trace_name = name } ibody in
   { name = Id.L (name); args = reds; fargs = []; body = trace; ret = Type.Int }

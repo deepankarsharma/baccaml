@@ -2,8 +2,9 @@ open MinCaml
 open Asm
 open Inlining
 open Renaming
-open Jit_config
 open Jit_util
+open Jit_prep
+
 open Operands
 
 (* function_name -> (arguments, following expressions) *)
@@ -146,9 +147,11 @@ and mj_if p reg mem fenv name = function
 
 
 let run_while p reg mem name reds =
-  let Prog (tbl, _, m) = p in
-  let Jit_prep.Env(fdfs, ibody, reds) =
-    Jit_prep.prep ~prog:p ~name:name ~red_args:reds ~jit_type:`Meta_method in
+  let Prog (tbl, fundefs, m) = p in
+  let Jit_env (fdfs, ibody, reds) =
+    Jit_prep.prep
+      ~fundefs:fundefs ~name:name ~red_args:reds ~jit_type:`Meta_method
+  in
   let p' = Prog (tbl, fdfs, m) in
   let rec loop p reg mem fenv name args t =
     let t1, fenv1 = mj p reg mem fenv name t in

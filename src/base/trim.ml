@@ -18,15 +18,12 @@ let rec convert = function
     end
   | t -> t
 
+let h { name; args; fargs; body; ret } =
+  { name = name;
+    args = args;
+    fargs = fargs;
+    body = body |> convert;
+    ret = ret; }
+
 let f (Prog (table, fundefs, main)) =
-  let fundefs' =
-    List.map fundefs
-      ~f:(fun { name; args; fargs; body; ret } ->
-          let body' = body |> convert in
-          { name = name
-          ; args = args
-          ; fargs = fargs
-          ; body = body'
-          ; ret = ret
-          })
-  in Prog (table, fundefs', main)
+  Prog (table, List.map ~f:h fundefs, main)

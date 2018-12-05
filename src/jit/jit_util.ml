@@ -1,6 +1,7 @@
 open MinCaml
 open Asm
-open Jit_config
+
+include Jit_config
 
 let int_of_id_t id =
   if id = "min_caml_hp" then
