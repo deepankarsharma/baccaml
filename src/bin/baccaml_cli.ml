@@ -6,6 +6,7 @@ exception Error of string
 
 let level = ref `Dump
 
+let main = ref ""
 let interp = ref ""
 let trace = ref ""
 let jit_type = ref `Not_specified
@@ -64,7 +65,7 @@ let dump typ file =
   |> Emit_virtual.to_string_prog
   |> Out_channel.print_endline
 
-let compile typ f =
+let compile_main typ f =
   let f = get_prefix f in
   let ic = In_channel.create (f ^ ".ml") in
   let oc = Out_channel.create (f ^ ".s") in
@@ -73,7 +74,6 @@ let compile typ f =
     |> Util.virtualize
     |> Trim.f
     |> Simm.f
-    |> trans_annot typ
     |> RegAlloc.f
     |> Emit.f oc;
     In_channel.close ic;
@@ -90,12 +90,6 @@ let validate_file file =
   | `Yes -> ()
   | `No | `Unknown -> raise (No_such_file file)
 
-let gen_fundefs_asm typ file =
-  compile_fundefs typ file
-
-let gen_interp_asm typ file =
-  compile (jit_typ typ) file
-
 let build_object_file_fundef file =
   let from = cwd ^ "/" ^ file ^ ".s" in
   let to' = cwd ^ "/" ^ file ^ ".o" in
@@ -110,13 +104,14 @@ let build_object_file file =
   Printf.sprintf "gcc -c -g -m32 %s -o %s" from to'
   |> Sys.command_exn
 
-let build_executable interp trace =
+let build_executable interp trace main =
   let cmd =
-    Printf.sprintf "gcc -g -m32 %s %s %s %s -o %s"
+    Printf.sprintf "gcc -g -m32 %s %s %s %s %s -o %s"
       ("stub/stub.c")
       ("stub/libmincaml.S")
       (interp ^ ".o")
       (trace ^ ".o")
+      (main ^ ".o")
       (trace)
   in
   Sys.command_exn cmd
@@ -125,15 +120,17 @@ let clean trace =
   let cmd = Printf.sprintf "rm -rf %s.dSYM" trace in
   Sys.command_exn cmd
 
-let build typ interp trace =
+let build typ interp trace main =
   try
-    gen_interp_asm typ interp;
+    compile_fundefs (jit_typ typ) interp;
+    compile_main (jit_typ typ) main;
     build_object_file interp;
+    build_object_file main;
     build_object_file trace;
-    build_executable interp trace;
+    build_executable interp trace main;
     clean trace
   with e ->
-    Printf.eprintf "building %s %s is failed.\n" interp trace;
+    Printf.eprintf "building %s %s %s is failed.\n" interp trace main;
     raise e
 
 let usage =
@@ -144,6 +141,7 @@ let spec_list = [
   ("-emit", Arg.Unit (fun _ -> level := `Emit), "Emit assembly file");
   ("-build", Arg.Unit (fun _ -> level := `Build), "Build executable");
   ("-interp", Arg.Set_string interp, "Specify interpreter file");
+  ("-main", Arg.Set_string main, "Specify main file");
   ("-trace", Arg.Set_string trace, "Specify trace name");
   ("-type", Arg.String begin fun arg ->
       jit_type_str := arg;
@@ -160,6 +158,6 @@ let _ =
   List.iter !files ~f:begin fun f ->
     match !level with
     | `Dump -> dump !jit_type f
-    | `Emit -> compile !jit_type f
-    | `Build -> build !jit_type_str (get_prefix f) !trace
+    | `Emit -> compile_fundefs !jit_type f
+    | `Build -> build !jit_type_str (get_prefix f) !trace (get_prefix !main)
   end

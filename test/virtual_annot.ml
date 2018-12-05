@@ -91,7 +91,7 @@ let rec min_caml_interp stack sp bytecode pc =
     min_caml_interp stack sp2 bytecode (pc + 4)
   else if instr = 12 then       (* LOOP_S *)
     (loop_start ();
-     min_caml_min_caml_interp stack sp bytecode (pc + 1))
+     min_caml_interp stack sp bytecode (pc + 1))
   else if instr = 13 then       (* LOOP_E *)
     (loop_end ();
      min_caml_interp stack sp bytecode (pc + 1))

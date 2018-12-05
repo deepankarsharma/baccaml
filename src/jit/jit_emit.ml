@@ -18,7 +18,7 @@ let find_interp_name fundefs =
   List.find begin fun { name = Id.L (x)} ->
     String.split_on_char '.' x
     |> List.hd
-    |> fun s -> (String.equal "interp" s) || (String.equal "interpret" s)
+    |> fun s -> (String.equal "min_caml_interp" s) || (String.equal "min_caml_interpret" s)
   end fundefs |> fun { name = Id.L (x) } -> x
 
 (* 命令列のアセンブリ生成 as String *)
